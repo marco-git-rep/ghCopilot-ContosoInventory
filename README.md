@@ -60,7 +60,7 @@ ContosoInventory/
 
 ## API Documentation
 
-When the application is running, Swagger UI is available at: `http://localhost:5240/swagger`
+See the [Categories API guide](ContosoInventory/Categories-API.md) for endpoint details and examples. When the application is running, Swagger UI is available at: `http://localhost:5240/swagger`
 
 ## License
 
