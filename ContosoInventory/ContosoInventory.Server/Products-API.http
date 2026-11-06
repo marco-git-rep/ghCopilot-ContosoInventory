@@ -1,0 +1,70 @@
+@baseUrl = http://localhost:5240
+@authCookie = .ContosoInventory.Auth=<auth-cookie>
+@adminCookie = .ContosoInventory.Auth=<admin-auth-cookie>
+@productId = 1
+@categoryId = 4
+
+### List all products (authenticated user)
+GET {{baseUrl}}/api/products
+Cookie: {{authCookie}}
+Accept: application/json
+
+### List products in a category
+GET {{baseUrl}}/api/products?categoryId={{categoryId}}
+Cookie: {{authCookie}}
+Accept: application/json
+
+### Read a product
+GET {{baseUrl}}/api/products/{{productId}}
+Cookie: {{authCookie}}
+Accept: application/json
+
+### Read a product that does not exist
+GET {{baseUrl}}/api/products/2147483647
+Cookie: {{authCookie}}
+Accept: application/json
+
+### Create a product (Admin)
+POST {{baseUrl}}/api/products
+Cookie: {{adminCookie}}
+Content-Type: application/json
+
+{
+  "name": "Wireless Mouse",
+  "sku": "MOUSE-100",
+  "description": "Wireless ergonomic mouse",
+  "price": 29.99,
+  "stockQuantity": 25,
+  "categoryId": {{categoryId}}
+}
+
+### Update a product (Admin)
+PUT {{baseUrl}}/api/products/{{productId}}
+Cookie: {{adminCookie}}
+Content-Type: application/json
+
+{
+  "name": "Wireless Mouse",
+  "sku": "MOUSE-100",
+  "description": "Updated wireless ergonomic mouse",
+  "price": 31.99,
+  "stockQuantity": 25,
+  "categoryId": {{categoryId}}
+}
+
+### Restock a product (Admin)
+POST {{baseUrl}}/api/products/{{productId}}/restock
+Cookie: {{adminCookie}}
+Content-Type: application/json
+
+{
+  "quantity": 10
+}
+
+### Delete a product (Admin)
+DELETE {{baseUrl}}/api/products/{{productId}}
+Cookie: {{adminCookie}}
+
+### Attempt to delete a category used by products (Admin; expects 409 Conflict)
+DELETE {{baseUrl}}/api/categories/{{categoryId}}
+Cookie: {{adminCookie}}

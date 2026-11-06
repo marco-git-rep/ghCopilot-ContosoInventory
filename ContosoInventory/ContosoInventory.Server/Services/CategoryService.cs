@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using ContosoInventory.Server.Data;
 using ContosoInventory.Server.Models;
+using ContosoInventory.Server.Repositories;
 using ContosoInventory.Shared.DTOs;
 
 namespace ContosoInventory.Server.Services;
@@ -8,27 +8,31 @@ namespace ContosoInventory.Server.Services;
 /// <summary>
 /// Provides operations for managing inventory categories.
 /// </summary>
-public class CategoryService : ICategoryService
+public sealed class CategoryService : ICategoryService
 {
-    private readonly InventoryContext _context;
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly IProductRepository _productRepository;
     private readonly ILogger<CategoryService> _logger;
 
-    public CategoryService(InventoryContext context, ILogger<CategoryService> logger)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CategoryService"/> class.
+    /// </summary>
+    public CategoryService(
+        ICategoryRepository categoryRepository,
+        IProductRepository productRepository,
+        ILogger<CategoryService> logger)
     {
-        _context = context;
+        _categoryRepository = categoryRepository;
+        _productRepository = productRepository;
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public async Task<List<CategoryResponseDto>> GetAllCategoriesAsync()
+    public async Task<List<CategoryResponseDto>> GetAllCategoriesAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var categories = await _context.Categories
-                .AsNoTracking()
-                .OrderBy(c => c.DisplayOrder)
-                .ToListAsync();
-
+            var categories = await _categoryRepository.GetAllAsync(cancellationToken);
             return categories.Select(MapToDto).ToList();
         }
         catch (Exception ex)
@@ -39,15 +43,12 @@ public class CategoryService : ICategoryService
     }
 
     /// <inheritdoc />
-    public async Task<CategoryResponseDto?> GetCategoryByIdAsync(int id)
+    public async Task<CategoryResponseDto?> GetCategoryByIdAsync(int id, CancellationToken cancellationToken)
     {
         try
         {
-            var category = await _context.Categories
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == id);
-
-            return category == null ? null : MapToDto(category);
+            var category = await _categoryRepository.GetByIdAsync(id, trackChanges: false, cancellationToken);
+            return category is null ? null : MapToDto(category);
         }
         catch (Exception ex)
         {
@@ -57,34 +58,32 @@ public class CategoryService : ICategoryService
     }
 
     /// <inheritdoc />
-    public async Task<CategoryResponseDto> CreateCategoryAsync(CreateCategoryDto dto)
+    public async Task<CategoryResponseDto> CreateCategoryAsync(
+        CreateCategoryDto dto,
+        CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(dto);
+
         try
         {
-            // Check for duplicate name (case-insensitive)
-            var exists = await _context.Categories
-                .AnyAsync(c => c.Name.ToLower() == dto.Name.ToLower());
-
-            if (exists)
+            if (await _categoryRepository.NameExistsAsync(dto.Name, null, cancellationToken))
             {
                 throw new InvalidOperationException($"A category with the name '{dto.Name}' already exists.");
             }
 
+            var now = DateTime.UtcNow;
             var category = new Category
             {
                 Name = dto.Name,
                 Description = dto.Description,
                 DisplayOrder = dto.DisplayOrder,
                 IsActive = true,
-                CreatedDate = DateTime.UtcNow,
-                LastModifiedDate = DateTime.UtcNow
+                CreatedDate = now,
+                LastModifiedDate = now
             };
 
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
-
+            await _categoryRepository.AddAsync(category, cancellationToken);
             _logger.LogInformation("Category created: {CategoryName} (ID: {CategoryId}).", category.Name, category.Id);
-
             return MapToDto(category);
         }
         catch (InvalidOperationException)
@@ -99,21 +98,22 @@ public class CategoryService : ICategoryService
     }
 
     /// <inheritdoc />
-    public async Task<CategoryResponseDto?> UpdateCategoryAsync(int id, UpdateCategoryDto dto)
+    public async Task<CategoryResponseDto?> UpdateCategoryAsync(
+        int id,
+        UpdateCategoryDto dto,
+        CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(dto);
+
         try
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
+            var category = await _categoryRepository.GetByIdAsync(id, trackChanges: true, cancellationToken);
+            if (category is null)
             {
                 return null;
             }
 
-            // Check for duplicate name (case-insensitive), excluding current category
-            var exists = await _context.Categories
-                .AnyAsync(c => c.Name.ToLower() == dto.Name.ToLower() && c.Id != id);
-
-            if (exists)
+            if (await _categoryRepository.NameExistsAsync(dto.Name, id, cancellationToken))
             {
                 throw new InvalidOperationException($"A category with the name '{dto.Name}' already exists.");
             }
@@ -124,10 +124,8 @@ public class CategoryService : ICategoryService
             category.IsActive = dto.IsActive;
             category.LastModifiedDate = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-
+            await _categoryRepository.SaveChangesAsync(cancellationToken);
             _logger.LogInformation("Category updated: {CategoryName} (ID: {CategoryId}).", category.Name, category.Id);
-
             return MapToDto(category);
         }
         catch (InvalidOperationException)
@@ -142,22 +140,58 @@ public class CategoryService : ICategoryService
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteCategoryAsync(int id)
+    public async Task<bool> DeleteCategoryAsync(int id, CancellationToken cancellationToken)
     {
         try
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
+            var category = await _categoryRepository.GetByIdAsync(id, trackChanges: true, cancellationToken);
+            if (category is null)
             {
                 return false;
             }
 
-            _context.Categories.Remove(category);
-            await _context.SaveChangesAsync();
+            if (await _productRepository.HasProductsInCategoryAsync(id, cancellationToken))
+            {
+                throw new CategoryInUseException(id);
+            }
 
+            await _categoryRepository.DeleteAsync(category, cancellationToken);
             _logger.LogInformation("Category deleted: {CategoryName} (ID: {CategoryId}).", category.Name, category.Id);
-
             return true;
+        }
+        catch (DbUpdateException ex)
+        {
+            try
+            {
+                if (await _productRepository.HasProductsInCategoryAsync(id, cancellationToken))
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Category {CategoryId} acquired product references before deletion completed.",
+                        id);
+                    throw new CategoryInUseException(id);
+                }
+            }
+            catch (CategoryInUseException)
+            {
+                throw;
+            }
+            catch (Exception checkException)
+            {
+                _logger.LogError(
+                    checkException,
+                    "Unable to verify product references after category {CategoryId} deletion failed.",
+                    id);
+                throw;
+            }
+
+            _logger.LogError(ex, "Error deleting category with ID {CategoryId}.", id);
+            throw;
+        }
+        catch (CategoryInUseException)
+        {
+            _logger.LogWarning("Category {CategoryId} cannot be deleted because products reference it.", id);
+            throw;
         }
         catch (Exception ex)
         {
@@ -167,12 +201,12 @@ public class CategoryService : ICategoryService
     }
 
     /// <inheritdoc />
-    public async Task<CategoryResponseDto?> ToggleActiveAsync(int id)
+    public async Task<CategoryResponseDto?> ToggleActiveAsync(int id, CancellationToken cancellationToken)
     {
         try
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
+            var category = await _categoryRepository.GetByIdAsync(id, trackChanges: true, cancellationToken);
+            if (category is null)
             {
                 return null;
             }
@@ -180,11 +214,12 @@ public class CategoryService : ICategoryService
             category.IsActive = !category.IsActive;
             category.LastModifiedDate = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("Category toggled: {CategoryName} (ID: {CategoryId}) is now {Status}.",
-                category.Name, category.Id, category.IsActive ? "active" : "inactive");
-
+            await _categoryRepository.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation(
+                "Category toggled: {CategoryName} (ID: {CategoryId}) is now {Status}.",
+                category.Name,
+                category.Id,
+                category.IsActive ? "active" : "inactive");
             return MapToDto(category);
         }
         catch (Exception ex)

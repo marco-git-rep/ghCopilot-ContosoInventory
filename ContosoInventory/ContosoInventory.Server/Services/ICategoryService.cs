@@ -10,14 +10,14 @@ public interface ICategoryService
     /// <summary>
     /// Retrieves all categories ordered by display order.
     /// </summary>
-    Task<List<CategoryResponseDto>> GetAllCategoriesAsync();
+    Task<List<CategoryResponseDto>> GetAllCategoriesAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// Retrieves a category by its unique identifier.
     /// </summary>
     /// <param name="id">The category identifier.</param>
     /// <returns>The category DTO, or null if not found.</returns>
-    Task<CategoryResponseDto?> GetCategoryByIdAsync(int id);
+    Task<CategoryResponseDto?> GetCategoryByIdAsync(int id, CancellationToken cancellationToken);
 
     /// <summary>
     /// Creates a new category.
@@ -25,7 +25,7 @@ public interface ICategoryService
     /// <param name="dto">The category creation data.</param>
     /// <returns>The created category DTO.</returns>
     /// <exception cref="InvalidOperationException">Thrown when a category with the same name already exists.</exception>
-    Task<CategoryResponseDto> CreateCategoryAsync(CreateCategoryDto dto);
+    Task<CategoryResponseDto> CreateCategoryAsync(CreateCategoryDto dto, CancellationToken cancellationToken);
 
     /// <summary>
     /// Updates an existing category.
@@ -34,19 +34,22 @@ public interface ICategoryService
     /// <param name="dto">The updated category data.</param>
     /// <returns>The updated category DTO, or null if not found.</returns>
     /// <exception cref="InvalidOperationException">Thrown when a category with the same name already exists.</exception>
-    Task<CategoryResponseDto?> UpdateCategoryAsync(int id, UpdateCategoryDto dto);
+    Task<CategoryResponseDto?> UpdateCategoryAsync(
+        int id,
+        UpdateCategoryDto dto,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Deletes a category by its unique identifier.
     /// </summary>
     /// <param name="id">The category identifier.</param>
     /// <returns>True if the category was deleted, false if not found.</returns>
-    Task<bool> DeleteCategoryAsync(int id);
+    Task<bool> DeleteCategoryAsync(int id, CancellationToken cancellationToken);
 
     /// <summary>
     /// Toggles the active status of a category.
     /// </summary>
     /// <param name="id">The category identifier.</param>
     /// <returns>The updated category DTO, or null if not found.</returns>
-    Task<CategoryResponseDto?> ToggleActiveAsync(int id);
+    Task<CategoryResponseDto?> ToggleActiveAsync(int id, CancellationToken cancellationToken);
 }

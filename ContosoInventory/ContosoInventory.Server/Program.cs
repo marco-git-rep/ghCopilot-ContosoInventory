@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using ContosoInventory.Server.Data;
+using ContosoInventory.Server.Repositories;
 using ContosoInventory.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -100,6 +101,9 @@ builder.Services.AddAntiforgery();
 
 // 9. Application services
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductService, ProductService>();
 
 var app = builder.Build();
 

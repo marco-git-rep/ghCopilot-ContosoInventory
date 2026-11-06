@@ -28,10 +28,10 @@ public class CategoriesController : ControllerBase
     /// <returns>A list of all categories.</returns>
     [HttpGet]
     [ProducesResponseType(typeof(List<CategoryResponseDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAllCategories()
+    public async Task<IActionResult> GetAllCategories(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Retrieving all categories.");
-        var categories = await _categoryService.GetAllCategoriesAsync();
+        var categories = await _categoryService.GetAllCategoriesAsync(cancellationToken);
         return Ok(categories);
     }
 
@@ -43,10 +43,10 @@ public class CategoriesController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(CategoryResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCategoryById([FromRoute] int id)
+    public async Task<IActionResult> GetCategoryById([FromRoute] int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Retrieving category with ID {CategoryId}.", id);
-        var category = await _categoryService.GetCategoryByIdAsync(id);
+        var category = await _categoryService.GetCategoryByIdAsync(id, cancellationToken);
 
         if (category == null)
         {
@@ -65,13 +65,15 @@ public class CategoriesController : ControllerBase
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(CategoryResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateCategory([FromBody] CreateCategoryDto dto)
+    public async Task<IActionResult> CreateCategory(
+        [FromBody] CreateCategoryDto dto,
+        CancellationToken cancellationToken)
     {
         _logger.LogInformation("Creating new category '{CategoryName}'.", dto.Name);
 
         try
         {
-            var category = await _categoryService.CreateCategoryAsync(dto);
+            var category = await _categoryService.CreateCategoryAsync(dto, cancellationToken);
             return CreatedAtAction(nameof(GetCategoryById), new { id = category.Id }, category);
         }
         catch (InvalidOperationException ex)
@@ -91,13 +93,16 @@ public class CategoriesController : ControllerBase
     [ProducesResponseType(typeof(CategoryResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateCategory([FromRoute] int id, [FromBody] UpdateCategoryDto dto)
+    public async Task<IActionResult> UpdateCategory(
+        [FromRoute] int id,
+        [FromBody] UpdateCategoryDto dto,
+        CancellationToken cancellationToken)
     {
         _logger.LogInformation("Updating category with ID {CategoryId}.", id);
 
         try
         {
-            var category = await _categoryService.UpdateCategoryAsync(id, dto);
+            var category = await _categoryService.UpdateCategoryAsync(id, dto, cancellationToken);
 
             if (category == null)
             {
@@ -121,17 +126,25 @@ public class CategoriesController : ControllerBase
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteCategory([FromRoute] int id)
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteCategory([FromRoute] int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deleting category with ID {CategoryId}.", id);
-        var deleted = await _categoryService.DeleteCategoryAsync(id);
-
-        if (!deleted)
+        try
         {
-            return NotFound();
-        }
+            var deleted = await _categoryService.DeleteCategoryAsync(id, cancellationToken);
 
-        return NoContent();
+            if (!deleted)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+        catch (CategoryInUseException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -143,10 +156,10 @@ public class CategoriesController : ControllerBase
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(CategoryResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ToggleActive([FromRoute] int id)
+    public async Task<IActionResult> ToggleActive([FromRoute] int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Toggling active status for category with ID {CategoryId}.", id);
-        var category = await _categoryService.ToggleActiveAsync(id);
+        var category = await _categoryService.ToggleActiveAsync(id, cancellationToken);
 
         if (category == null)
         {

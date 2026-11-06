@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContosoInventory.Client", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContosoInventory.Shared", "ContosoInventory.Shared\ContosoInventory.Shared.csproj", "{C2274272-CE43-4168-A479-28A2DB9E9B1D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContosoInventory.Tests", "ContosoInventory.Tests\ContosoInventory.Tests.csproj", "{C8DA0DDC-5663-466D-8351-0602D9CB3E8D}"
+EndProject
 Global
 GlobalSection(SolutionConfigurationPlatforms) = preSolution
 Debug|Any CPU = Debug|Any CPU
@@ -27,5 +29,9 @@ GlobalSection(ProjectConfigurationPlatforms) = postSolution
 {C2274272-CE43-4168-A479-28A2DB9E9B1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 {C2274272-CE43-4168-A479-28A2DB9E9B1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 {C2274272-CE43-4168-A479-28A2DB9E9B1D}.Release|Any CPU.Build.0 = Release|Any CPU
+{C8DA0DDC-5663-466D-8351-0602D9CB3E8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+{C8DA0DDC-5663-466D-8351-0602D9CB3E8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+{C8DA0DDC-5663-466D-8351-0602D9CB3E8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+{C8DA0DDC-5663-466D-8351-0602D9CB3E8D}.Release|Any CPU.Build.0 = Release|Any CPU
 EndGlobalSection
 EndGlobal

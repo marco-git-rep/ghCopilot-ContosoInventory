@@ -248,7 +248,10 @@ Permanently deletes the specified category. Requires the `Admin` role.
   - `401 Unauthorized` — Authentication cookie is missing or invalid.
   - `403 Forbidden` — User does not have the `Admin` role.
   - `404 Not Found` — No category has that identifier; the response body is empty.
+  - `409 Conflict` — Products still reference the category.
   - `429 Too Many Requests` — Rate limit exceeded.
+
+Categories referenced by products cannot be deleted. Delete or reassign those products first.
 
 **Example request**
 
